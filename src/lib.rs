@@ -37,6 +37,12 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
         .get("/", |_, _| Response::ok("Hello from Workers!"))
         .get_async("/convert/chroma29", |req, _ctx| async move {
             let url = req.url()?;
+            let invert = url
+                .query_pairs()
+                .find(|(key, _)| key == "inv")
+                .map(|(_, val)| val)
+                .unwrap_or(std::borrow::Cow::Borrowed("0"))
+                == "1";
             let origin = url
                 .query_pairs()
                 .find(|(key, _)| key == "origin")
@@ -85,7 +91,7 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
             for _y in 0..h {
                 let mut pixels = Vec::with_capacity(w.try_into().unwrap());
                 for _x in 0..w {
-                    pixels.push(png_buf[i * depth] < 128);
+                    pixels.push((png_buf[i * depth] < 128) ^ invert);
                     i += 1;
                 }
                 bmp_data.push(pixels);

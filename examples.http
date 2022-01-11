@@ -1,0 +1,4 @@
+GET http://127.0.0.1:8787/convert/chroma29?aa=123&origin=https://s20.directupload.net/images/220109/egwdsuci.png
+
+### other file
+GET http://127.0.0.1:8787/convert/chroma29?aa=123&origin=https://i.stack.imgur.com/hjwrE.png
