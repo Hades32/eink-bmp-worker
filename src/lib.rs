@@ -1,5 +1,10 @@
-use serde_json::json;
+use bmp_monochrome::Bmp;
 use worker::*;
+
+use image::codecs::png::PngDecoder;
+use image::ImageDecoder;
+use std::io::Cursor;
+use worker::wasm_bindgen::UnwrapThrowExt;
 
 mod utils;
 
@@ -30,21 +35,69 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
     // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
         .get("/", |_, _| Response::ok("Hello from Workers!"))
-        .post_async("/form/:field", |mut req, ctx| async move {
-            if let Some(name) = ctx.param("field") {
-                let form = req.form_data().await?;
-                match form.get(name) {
-                    Some(FormEntry::Field(value)) => {
-                        return Response::from_json(&json!({ name: value }))
-                    }
-                    Some(FormEntry::File(_)) => {
-                        return Response::error("`field` param in form shouldn't be a File", 422);
-                    }
-                    None => return Response::error("Bad Request", 400),
-                }
+        .get_async("/convert/chroma29", |req, _ctx| async move {
+            let url = req.url()?;
+            let origin = url
+                .query_pairs()
+                .find(|(key, _)| key == "origin")
+                .map(|(_, val)| val);
+            if origin.is_none() {
+                return Response::error("origin missing", 400);
             }
 
-            Response::error("Bad Request", 400)
+            let origin_url = Url::parse(origin.unwrap().to_string().as_str());
+            if origin_url.is_err() {
+                return Response::error("origin is not a URL", 400);
+            }
+
+            let origin_resp = Fetch::Url(origin_url.unwrap()).send().await;
+            if let Err(err) = origin_resp {
+                return Response::error(format!("couldn't get origin: {}", err.to_string()), 400);
+            }
+            let bytes = origin_resp.unwrap().bytes().await;
+            if let Err(err) = bytes {
+                return Response::error(format!("couldn't read origin: {}", err.to_string()), 400);
+            }
+            let bytes = bytes.unwrap();
+
+            let img = PngDecoder::new(Cursor::new(bytes));
+            if let Err(err) = img {
+                return Response::error(
+                    format!("couldn't decode origin header: {}", err.to_string()),
+                    400,
+                );
+            }
+            let img = img.unwrap_throw();
+            let (w, h) = img.dimensions();
+            let depth: usize = img.color_type().bytes_per_pixel().into();
+            println!("image: w={} h={}", w, h);
+
+            let mut png_buf = vec![0; img.total_bytes().try_into().unwrap()];
+            let res = img.read_image(&mut png_buf);
+            if let Err(err) = res {
+                return Response::error(
+                    format!("couldn't decode origin body: {}", err.to_string()),
+                    400,
+                );
+            }
+            let mut bmp_data = Vec::with_capacity(h.try_into().unwrap());
+            let mut i: usize = 0;
+            for _y in 0..h {
+                let mut pixels = Vec::with_capacity(w.try_into().unwrap());
+                for _x in 0..w {
+                    pixels.push(png_buf[i * depth] < 128);
+                    i += 1;
+                }
+                bmp_data.push(pixels);
+            }
+            let bmp = Bmp::new(bmp_data).unwrap();
+            let mut bmp_buf = Cursor::new(Vec::new());
+            bmp.write(&mut bmp_buf).unwrap();
+            let mut headers = Headers::new();
+            headers.set("Content-Type", "image/bmp").unwrap();
+            Ok(Response::from_bytes(bmp_buf.into_inner())
+                .unwrap()
+                .with_headers(headers))
         })
         .get("/worker-version", |_, ctx| {
             let version = ctx.var("WORKERS_RS_VERSION")?.to_string();
