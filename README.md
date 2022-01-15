@@ -1,6 +1,6 @@
 # Creating 1bit BMPs for eInk displays from PNGs
 
-A serverless function hosted on Cloudflare workers to create images that are compatible with eInk displays as such as supported by https://github.com/atc1441/E-Paper_Pricetags/tree/main/Custom_PriceTag_AccesPoint .
+A serverless function hosted on Cloudflare workers to create images that are compatible with eInk displays as such as supported by https://github.com/atc1441/E-Paper_Pricetags/tree/main/Custom_PriceTag_AccesPoint or my simplified fork https://github.com/Hades32/web-tags .
 
 Hosted at https://eink-bmp-converter.h32.workers.dev
 
