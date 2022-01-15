@@ -51,25 +51,52 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                 return Response::error("origin missing", 400);
             }
 
-            let origin_url = Url::parse(origin.unwrap().to_string().as_str());
+            let origin_url_str = origin.unwrap().to_string();
+            let origin_url = Url::parse(&origin_url_str);
             if origin_url.is_err() {
                 return Response::error("origin is not a URL", 400);
             }
 
             let origin_resp = Fetch::Url(origin_url.unwrap()).send().await;
             if let Err(err) = origin_resp {
-                return Response::error(format!("couldn't get origin: {}", err.to_string()), 400);
+                return Response::error(
+                    format!(
+                        "couldn't get origin({}): {}",
+                        origin_url_str,
+                        err.to_string(),
+                    ),
+                    400,
+                );
             }
-            let bytes = origin_resp.unwrap().bytes().await;
+            let mut origin_resp = origin_resp.unwrap();
+            if origin_resp.status_code() != 200 {
+                return Response::error(
+                    format!(
+                        "couldn't get origin({}): status code {}\n{}",
+                        origin_url_str,
+                        origin_resp.status_code(),
+                        origin_resp.text().await.unwrap_or_default(),
+                    ),
+                    400,
+                );
+            }
+            let bytes = origin_resp.bytes().await;
             if let Err(err) = bytes {
-                return Response::error(format!("couldn't read origin: {}", err.to_string()), 400);
+                return Response::error(
+                    format!(
+                        "couldn't read origin({}): {}",
+                        origin_url_str,
+                        err.to_string(),
+                    ),
+                    400,
+                );
             }
             let bytes = bytes.unwrap();
 
             let img = PngDecoder::new(Cursor::new(bytes));
             if let Err(err) = img {
                 return Response::error(
-                    format!("couldn't decode origin header: {}", err.to_string()),
+                    format!("couldn't decode header: {}", err.to_string()),
                     400,
                 );
             }
