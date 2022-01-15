@@ -3,6 +3,10 @@ type = "javascript"
 workers_dev = true
 compatibility_date = "2022-01-04"
 
+account_id = "a8dcb10a2319e0d66f6dc8ed96056001"
+zone_id = "bd77b1710d8a024caced0f0b0377f401"
+routes = ["eink-bmp-worker.5gp.de/*"]
+
 [vars]
 WORKERS_RS_VERSION = "0.0.7"
 
