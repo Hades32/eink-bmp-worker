@@ -6,11 +6,12 @@ Hosted at https://eink-bmp-converter.h32.workers.dev
 
 ## Parameters
 * **origin**: the source URL to pull a PNG from
-* **inv**: 0/1 to indicate if the image should be inverted
+* **color**: 0(default): only pixels with a intensity <25% become black. 1: only colorful pixels (saturation >75%) become black
+* **inv**: 0/1 inverts the resulting image
+* **rotate**: rotes the image by 90/180/270 degrees
 
 ## Example
 
-https://eink-bmp-converter.h32.workers.dev/convert/chroma29?origin=https://s20.directupload.net/images/220111/wtuiao47.png&inv=1
-creates this:
-
-![sample image](https://eink-bmp-converter.h32.workers.dev/convert/chroma29?origin=https://s20.directupload.net/images/220111/wtuiao47.png&inv=1)
+| input | extract black, rotate and invert | extract color, rotate and don't invert |
+|---|---|---|
+| [![quote of the day](https://info-draw-worker.5gp.de/image)](https://info-draw-worker.5gp.de/image) | [![alt](https://eink-bmp-converter.h32.workers.dev/convert/chroma29?color=0&inv=1&rotate=90&origin=https://info-draw-worker.5gp.de/image)](https://eink-bmp-converter.h32.workers.dev/convert/chroma29?color=0&inv=1&rotate=90&origin=https://info-draw-worker.5gp.de/image)  | [![alt](https://eink-bmp-converter.h32.workers.dev/convert/chroma29?color=1&inv=0&rotate=90&origin=https://info-draw-worker.5gp.de/image)](https://eink-bmp-converter.h32.workers.dev/convert/chroma29?color=1&inv=0&rotate=90&origin=https://info-draw-worker.5gp.de/image) |
