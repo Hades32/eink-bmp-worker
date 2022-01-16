@@ -1,8 +1,7 @@
 use bmp_monochrome::Bmp;
 use worker::*;
 
-use image::codecs::png::PngDecoder;
-use image::ImageDecoder;
+use image::{GenericImageView, Pixel};
 use std::io::Cursor;
 use worker::wasm_bindgen::UnwrapThrowExt;
 
@@ -43,6 +42,19 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                 .map(|(_, val)| val)
                 .unwrap_or(std::borrow::Cow::Borrowed("0"))
                 == "1";
+            let color = url
+                .query_pairs()
+                .find(|(key, _)| key == "color")
+                .map(|(_, val)| val)
+                .unwrap_or(std::borrow::Cow::Borrowed("0"))
+                == "1";
+            let rotate: i32 = url
+                .query_pairs()
+                .find(|(key, _)| key == "rotate")
+                .map(|(_, val)| val)
+                .unwrap_or(std::borrow::Cow::Borrowed("0"))
+                .parse()
+                .unwrap_or(0);
             let origin = url
                 .query_pairs()
                 .find(|(key, _)| key == "origin")
@@ -91,35 +103,41 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                     400,
                 );
             }
-            let bytes = bytes.unwrap();
+            let img = image::load_from_memory(bytes.unwrap().as_mut_slice());
 
-            let img = PngDecoder::new(Cursor::new(bytes));
             if let Err(err) = img {
-                return Response::error(
-                    format!("couldn't decode header: {}", err.to_string()),
-                    400,
-                );
+                return Response::error(format!("couldn't decode image: {}", err.to_string()), 400);
             }
-            let img = img.unwrap_throw();
+            let mut img = img.unwrap_throw();
+            if rotate > 0 {
+                console_log!("rotating by {}", rotate);
+                match rotate {
+                    90 => img = img.rotate90(),
+                    180 => img = img.rotate180(),
+                    270 => img = img.rotate270(),
+                    _ => console_log!("invalid degrees {}", rotate),
+                }
+            }
             let (w, h) = img.dimensions();
-            let depth: usize = img.color_type().bytes_per_pixel().into();
-            println!("image: w={} h={}", w, h);
+            console_log!("image: w={} h={}", w, h);
 
-            let mut png_buf = vec![0; img.total_bytes().try_into().unwrap()];
-            let res = img.read_image(&mut png_buf);
-            if let Err(err) = res {
-                return Response::error(
-                    format!("couldn't decode origin body: {}", err.to_string()),
-                    400,
-                );
-            }
             let mut bmp_data = Vec::with_capacity(h.try_into().unwrap());
-            let mut i: usize = 0;
-            for _y in 0..h {
+            for y in 0..h {
                 let mut pixels = Vec::with_capacity(w.try_into().unwrap());
-                for _x in 0..w {
-                    pixels.push((png_buf[i * depth] < 128) ^ invert);
-                    i += 1;
+                for x in 0..w {
+                    let pixel = img.get_pixel(x, y);
+                    //Saturation = [(MaxColor - MinColor) / (MaxColor + MinColor)]
+                    let max_col = *pixel.to_rgb().channels().iter().max().unwrap() as f32;
+                    let min_col = *pixel.to_rgb().channels().iter().min().unwrap() as f32;
+                    let sat = (max_col - min_col) / 255_f32.min(max_col + min_col);
+                    let int: f32 = pixel
+                        .to_rgb()
+                        .channels()
+                        .iter()
+                        .fold(0_f32, |s, c| s + (*c as f32) / 255.0)
+                        / 3_f32;
+                    let pixel_active = if color { sat > 0.75 } else { int < 0.25 };
+                    pixels.push(pixel_active ^ invert);
                 }
                 bmp_data.push(pixels);
             }

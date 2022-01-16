@@ -2,3 +2,15 @@ GET http://127.0.0.1:8787/convert/chroma29?aa=123&origin=https://s20.directuploa
 
 ### other file
 GET http://127.0.0.1:8787/convert/chroma29?aa=123&origin=https://i.stack.imgur.com/hjwrE.png
+
+### other worker black
+GET http://127.0.0.1:8787/convert/chroma29?origin=https://info-draw-worker.5gp.de/image
+
+### other worker color
+GET http://127.0.0.1:8787/convert/chroma29?color=1&origin=https://info-draw-worker.5gp.de/image
+
+### other worker color and rotate
+GET http://127.0.0.1:8787/convert/chroma29?color=1&rotate=90&origin=https://info-draw-worker.5gp.de/image
+
+### other worker color and rotate and invert
+GET http://127.0.0.1:8787/convert/chroma29?color=1&inv=1&rotate=90&origin=https://info-draw-worker.5gp.de/image
